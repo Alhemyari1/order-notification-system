@@ -4,6 +4,21 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Artifacts
+
+### Order Notification System (`artifacts/order-notify`)
+- **URL**: `/` (root)
+- **Kind**: React + Vite web app
+- **Purpose**: Bilingual (Arabic/English) cafe order notification system
+- **Features**:
+  - Staff control panel: enter order numbers, notify/clear
+  - Customer display: large grid of ready order numbers
+  - Audio bell alert (Web Audio API) on each new order
+  - RTL/LTR language toggle (AR/EN)
+  - Slide-in + pulse glow animation for newest order
+  - CSS custom properties for easy brand color changes
+  - Logo placeholder (`LOGO_URL` constant in `OrderSystem.tsx`)
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

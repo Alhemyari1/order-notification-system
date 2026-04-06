@@ -1,0 +1,34 @@
+Act as an Expert Frontend Web Developer and UI/UX Designer. I need you to build a single-page, responsive "Order Notification System" for a cafe/restaurant. 
+
+Here are the detailed requirements:
+
+### 1. Core Architecture & Tech Stack
+* **Tech Stack:** Vanilla HTML5, CSS3, and JavaScript. No frameworks are required unless you prefer using Tailwind CSS via CDN for faster styling.
+* **No Database:** The application must be entirely client-side. Store data only in memory. When the page is refreshed, all current orders must be completely cleared.
+
+### 2. Layout & UI Components
+The page should be divided into two main sections (or designed in a way that staff can easily input data while customers can clearly see the screen):
+* **Control Panel (For Staff):**
+    * A number input field to enter the "Ready Order Number".
+    * A "Notify / Add Order" button to push the number to the screen.
+    * A "Clear All" button to manually wipe all currently displayed orders.
+* **Display Area (For Customers):**
+    * A large, highly visible grid or list displaying the ready order numbers.
+    * The font size must be large enough to be easily readable from a distance on a TV screen.
+
+### 3. Features & Functionality
+* **Audio Alert:** Play a distinct notification sound (e.g., a "ding" or bell) every time a new order number is added. (Please provide a standard audio file URL or base64 audio snippet in the code).
+* **Bilingual Support (Arabic & English):** * Include a language toggle button (AR/EN).
+    * The JavaScript must switch the UI text dynamically.
+    * The page must change its direction (`dir="rtl"` for Arabic, `dir="ltr"` for English) automatically.
+* **Visual Animation:** Add a subtle visual cue (like a pulse, flash, or slide-in animation) to the newest number added so it grabs the customers' attention.
+
+### 4. Customization & Branding (Crucial)
+* **CSS Variables:** Set up the CSS using `:root` variables for primary colors, secondary colors, text colors, and backgrounds. This is so I can easily change the brand identity later.
+* **Logo Placeholder:** Include a clear, centered placeholder for the cafe's logo (e.g., an `<img src="...">` tag) that I can easily replace with my own image link.
+
+### 5. Responsiveness
+* The design must be fully responsive. It should work perfectly on a mobile phone/tablet (for the staff entering numbers) and scale beautifully for a large TV screen (for customers waiting for their orders).
+* Use clean, modern, and minimalist styling with high contrast.
+
+Please provide the complete, ready-to-run code (HTML, CSS, and JS). You can provide them as separate blocks or combined in one single `index.html` file.
