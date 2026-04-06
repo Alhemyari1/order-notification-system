@@ -123,6 +123,10 @@ export default function OrderSystem() {
     }, 6000);
   }, [inputValue, orders, nextId, t]);
 
+  const dismissOrder = useCallback((id: number) => {
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+  }, []);
+
   const clearAll = useCallback(() => {
     setOrders([]);
     setErrorMsg("");
@@ -169,7 +173,7 @@ export default function OrderSystem() {
         ) : (
           <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard key={order.id} order={order} onDismiss={dismissOrder} />
             ))}
           </div>
         )}
@@ -235,13 +239,16 @@ export default function OrderSystem() {
   );
 }
 
-function OrderCard({ order }: { order: Order }) {
+function OrderCard({ order, onDismiss }: { order: Order; onDismiss: (id: number) => void }) {
   return (
     <div
+      onClick={() => onDismiss(order.id)}
+      title="Tap to dismiss"
       className={`
         relative flex items-center justify-center aspect-square
-        rounded-2xl border-4 select-none cursor-default
-        transition-all duration-300
+        rounded-2xl border-4 select-none cursor-pointer
+        transition-all duration-200
+        hover:scale-95 hover:opacity-80 active:scale-90
         ${
           order.isNew
             ? "border-primary bg-primary/8 order-card-new shadow-xl"

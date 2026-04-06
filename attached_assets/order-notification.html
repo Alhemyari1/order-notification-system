@@ -189,9 +189,12 @@
       justify-content: center;
       position: relative;
       box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-      cursor: default;
+      cursor: pointer;
       user-select: none;
+      transition: transform 0.15s, opacity 0.15s;
     }
+    .order-card:hover  { transform: scale(0.95); opacity: 0.8; }
+    .order-card:active { transform: scale(0.90); }
     .order-card.is-new {
       border-color: var(--primary);
       background: var(--primary-light);
@@ -522,6 +525,8 @@
         card = document.createElement('div');
         card.className = 'order-card' + (order.isNew ? ' is-new' : '');
         card.dataset.id = order.id;
+        card.title = 'Tap to dismiss';
+        card.addEventListener('click', () => dismissOrder(order.id));
 
         if (order.isNew) {
           const dot = document.createElement('span');
@@ -579,6 +584,11 @@
         renderGrid();
       }
     }, 6000);
+  }
+
+  function dismissOrder(id) {
+    orders = orders.filter(o => o.id !== id);
+    renderGrid();
   }
 
   function clearAll() {
