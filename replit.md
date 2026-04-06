@@ -4,6 +4,11 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## GitHub Repository
+
+- **URL**: https://github.com/Alhemyari1/order-notification-system
+- **Note**: GitHub integration OAuth was not used. Code was pushed via PAT using git CLI with inline token. If pushing again in the future, use: `git -c "url.https://<TOKEN>@github.com/.insteadOf=https://github.com/" push https://github.com/Alhemyari1/order-notification-system.git HEAD:main`
+
 ## Artifacts
 
 ### Order Notification System (`artifacts/order-notify`)
