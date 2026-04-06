@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Notification System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES — Edit these to match your brand
+    ============================================================ */
+    :root {
+      /* Primary brand color (orange) — change h/s/l to your color */
+      --brand-h: 24;
+      --brand-s: 95%;
+      --brand-l: 50%;
+
+      /* Derived from brand */
+      --primary:        hsl(var(--brand-h), var(--brand-s), var(--brand-l));
+      --primary-dark:   hsl(var(--brand-h), var(--brand-s), calc(var(--brand-l) - 8%));
+      --primary-light:  hsl(var(--brand-h), var(--brand-s), 92%);
+      --primary-text:   #ffffff;
+
+      /* Backgrounds & surfaces */
+      --bg:             hsl(30, 20%, 97%);
+      --surface:        #ffffff;
+      --border:         hsl(30, 15%, 88%);
+      --muted:          hsl(30, 10%, 55%);
+      --text:           hsl(25, 30%, 12%);
+
+      /* Danger */
+      --danger:         hsl(0, 80%, 57%);
+      --danger-light:   hsl(0, 80%, 95%);
+
+      /* Sizing */
+      --radius:         14px;
+      --bar-height:     58px;
+      --header-height:  52px;
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.96); }
+    button:disabled { opacity: 0.28; cursor: not-allowed; pointer-events: none; }
+
+    input[type=number] {
+      font-family: inherit;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ============================================================
+       LAYOUT SHELL — header / main / footer
+    ============================================================ */
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    #header {
+      flex-shrink: 0;
+      height: var(--header-height);
+      background: var(--primary);
+      color: var(--primary-text);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    #logo-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.2);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+    /* Replace "" with your image URL to show the logo */
+    #logo-wrap img { width: 100%; height: 100%; object-fit: contain; display: none; }
+
+    #header-text { flex: 1; min-width: 0; }
+    #header-title {
+      font-size: 1.05rem;
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #header-subtitle {
+      font-size: 0.72rem;
+      opacity: 0.72;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #ready-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 3px 12px;
+      white-space: nowrap;
+    }
+    #ready-badge.visible { display: flex; }
+    #badge-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #86efac;
+      animation: ping 1.2s ease-in-out infinite;
+    }
+
+    /* ── DISPLAY AREA ── */
+    #display {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Empty state */
+    #empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+    }
+    #empty-icon { font-size: 5rem; opacity: 0.2; user-select: none; }
+    #empty-title { font-size: 1.6rem; font-weight: 800; color: var(--muted); }
+    #empty-sub { font-size: 1rem; color: var(--muted); opacity: 0.7; max-width: 300px; }
+
+    /* Order grid */
+    #order-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 18px;
+    }
+    @media (min-width: 640px)  { #order-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
+    @media (min-width: 1024px) { #order-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }
+    @media (min-width: 1440px) { #order-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); } }
+
+    .order-card {
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      border: 4px solid rgba(var(--brand-h), 30%, 80%, 0.35);
+      border-color: color-mix(in hsl, var(--primary) 40%, transparent);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      cursor: default;
+      user-select: none;
+    }
+    .order-card.is-new {
+      border-color: var(--primary);
+      background: var(--primary-light);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      animation: slideInUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+                 glowPulse 1.8s ease-in-out 0.4s 3;
+    }
+    .order-number {
+      font-size: clamp(2.5rem, 6vw, 6rem);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .order-card.is-new .order-number { color: var(--primary); }
+
+    /* New-order pulsing dot */
+    .new-dot {
+      position: absolute;
+      top: 10px;
+      inset-inline-end: 10px;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .new-dot::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: ping 1s ease-in-out infinite;
+    }
+
+    /* ── BOTTOM CONTROL BAR ── */
+    #control-bar {
+      flex-shrink: 0;
+      height: var(--bar-height);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #order-input-wrap { flex: 1; position: relative; min-width: 0; }
+    #order-input {
+      width: 100%;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      padding: 6px 12px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      text-align: center;
+      color: var(--text);
+      transition: border-color 0.15s;
+      height: 40px;
+    }
+    #order-input:focus { border-color: var(--primary); }
+    #order-input::placeholder { font-weight: 400; opacity: 0.4; font-size: 0.95rem; }
+
+    #error-msg {
+      position: absolute;
+      top: -22px;
+      inset-inline-start: 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--danger);
+      white-space: nowrap;
+    }
+
+    #btn-notify {
+      flex-shrink: 0;
+      background: var(--primary);
+      color: var(--primary-text);
+      border-radius: 12px;
+      padding: 0 16px;
+      height: 40px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    #btn-notify:hover { background: var(--primary-dark); }
+
+    #btn-clear {
+      flex-shrink: 0;
+      background: transparent;
+      color: var(--danger);
+      border-radius: 12px;
+      padding: 0 12px;
+      height: 40px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border: 2px solid rgba(220, 50, 50, 0.4);
+      white-space: nowrap;
+    }
+    #btn-clear:hover { background: var(--danger-light); }
+
+    #bar-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    #btn-lang {
+      flex-shrink: 0;
+      background: #f1f1f1;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 0 12px;
+      height: 40px;
+      font-size: 0.88rem;
+      font-weight: 900;
+      border: 2px solid var(--border);
+      letter-spacing: 0.04em;
+    }
+    #btn-lang:hover { background: var(--primary-light); border-color: var(--primary); }
+
+    /* ============================================================
+       ANIMATIONS
+    ============================================================ */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(36px) scale(0.88); }
+      to   { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 0 0 0   rgba(0,0,0,0.08), 0 0 0 0   color-mix(in srgb, var(--primary) 0%,  transparent); }
+      50%       { box-shadow: 0 0 0 14px rgba(0,0,0,0),   0 0 30px 0 color-mix(in srgb, var(--primary) 35%, transparent); }
+    }
+    @keyframes ping {
+      0%   { transform: scale(1);   opacity: 0.8; }
+      70%  { transform: scale(2.2); opacity: 0;   }
+      100% { transform: scale(2.2); opacity: 0;   }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── HEADER ── -->
+  <header id="header">
+    <div id="logo-wrap">
+      <!-- To use your cafe logo: set the src attribute below and remove display:none from the CSS -->
+      <img id="logo-img" src="" alt="Logo" />
+      <span id="logo-fallback">☕</span>
+    </div>
+    <div id="header-text">
+      <div id="header-title">Order Ready</div>
+      <div id="header-subtitle">Your order is ready for pickup</div>
+    </div>
+    <div id="ready-badge">
+      <span id="badge-dot"></span>
+      <span id="badge-text">0 Ready for Pickup</span>
+    </div>
+  </header>
+
+  <!-- ── DISPLAY AREA ── -->
+  <main id="display">
+    <div id="empty-state">
+      <div id="empty-icon">🔔</div>
+      <div id="empty-title">No orders ready yet</div>
+      <div id="empty-sub">Enter an order number below to notify customers</div>
+    </div>
+    <div id="order-grid" style="display:none"></div>
+  </main>
+
+  <!-- ── COMPACT BOTTOM CONTROL BAR ── -->
+  <footer id="control-bar">
+    <div id="order-input-wrap">
+      <span id="error-msg"></span>
+      <input
+        type="number"
+        id="order-input"
+        min="1"
+        max="9999"
+        placeholder="Order #"
+        autocomplete="off"
+      />
+    </div>
+    <button id="btn-notify">Notify</button>
+    <button id="btn-clear" disabled>Clear All</button>
+    <div id="bar-divider"></div>
+    <button id="btn-lang">AR</button>
+  </footer>
+
+</div>
+
+<script>
+  /* ============================================================
+     TRANSLATIONS
+  ============================================================ */
+  const LANGS = {
+    en: {
+      dir: 'ltr',
+      title: 'Order Ready',
+      subtitle: 'Your order is ready for pickup',
+      placeholder: 'Order #',
+      notify: 'Notify',
+      clearAll: 'Clear All',
+      noOrdersTitle: 'No orders ready yet',
+      noOrdersSub: 'Enter an order number below to notify customers',
+      readyLabel: 'Ready for Pickup',
+      langToggle: 'AR',
+      errInvalid: 'Enter a valid number (1–9999)',
+      errDuplicate: 'Already on screen',
+    },
+    ar: {
+      dir: 'rtl',
+      title: 'الطلب جاهز',
+      subtitle: 'طلبك جاهز للاستلام',
+      placeholder: 'رقم الطلب',
+      notify: 'إشعار',
+      clearAll: 'مسح الكل',
+      noOrdersTitle: 'لا توجد طلبات جاهزة',
+      noOrdersSub: 'أدخل رقم الطلب أدناه لإعلام العملاء',
+      readyLabel: 'جاهز للاستلام',
+      langToggle: 'EN',
+      errInvalid: 'أدخل رقمًا صحيحًا (١–٩٩٩٩)',
+      errDuplicate: 'الطلب معروض بالفعل',
+    },
+  };
+
+  /* ============================================================
+     STATE
+  ============================================================ */
+  let lang = 'en';
+  let orders = []; // { id, number, isNew }
+  let nextId = 1;
+
+  /* ============================================================
+     DOM REFS
+  ============================================================ */
+  const $html        = document.documentElement;
+  const $headerTitle = document.getElementById('header-title');
+  const $headerSub   = document.getElementById('header-subtitle');
+  const $emptyState  = document.getElementById('empty-state');
+  const $emptyTitle  = document.getElementById('empty-title');
+  const $emptySub    = document.getElementById('empty-sub');
+  const $grid        = document.getElementById('order-grid');
+  const $input       = document.getElementById('order-input');
+  const $btnNotify   = document.getElementById('btn-notify');
+  const $btnClear    = document.getElementById('btn-clear');
+  const $btnLang     = document.getElementById('btn-lang');
+  const $errorMsg    = document.getElementById('error-msg');
+  const $badge       = document.getElementById('ready-badge');
+  const $badgeText   = document.getElementById('badge-text');
+  const $logoImg     = document.getElementById('logo-img');
+  const $logoFb      = document.getElementById('logo-fallback');
+
+  // Show logo image if it loads, otherwise keep emoji
+  if ($logoImg.src && $logoImg.src !== window.location.href) {
+    $logoImg.onload  = () => { $logoImg.style.display = 'block'; $logoFb.style.display = 'none'; };
+    $logoImg.onerror = () => { $logoImg.style.display = 'none'; $logoFb.style.display = 'block'; };
+  }
+
+  /* ============================================================
+     AUDIO — bell chord using Web Audio API
+  ============================================================ */
+  function playBell() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      [[523.25,0],[659.25,.15],[783.99,.3],[1046.5,.45]].forEach(([f,d]) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, ctx.currentTime + d);
+        gain.gain.setValueAtTime(0, ctx.currentTime + d);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + d + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.8);
+        osc.start(ctx.currentTime + d);
+        osc.stop(ctx.currentTime + d + 0.8);
+      });
+      setTimeout(() => ctx.close(), 3000);
+    } catch(e) {}
+  }
+
+  /* ============================================================
+     RENDER
+  ============================================================ */
+  function applyLang() {
+    const t = LANGS[lang];
+    $html.dir  = t.dir;
+    $html.lang = lang;
+    $headerTitle.textContent  = t.title;
+    $headerSub.textContent    = t.subtitle;
+    $emptyTitle.textContent   = t.noOrdersTitle;
+    $emptySub.textContent     = t.noOrdersSub;
+    $btnNotify.textContent    = t.notify;
+    $btnClear.textContent     = t.clearAll;
+    $btnLang.textContent      = t.langToggle;
+    $input.placeholder        = t.placeholder;
+    $badgeText.textContent    = `${orders.length} ${t.readyLabel}`;
+  }
+
+  function renderGrid() {
+    const t = LANGS[lang];
+    const hasOrders = orders.length > 0;
+
+    $emptyState.style.display = hasOrders ? 'none' : 'flex';
+    $grid.style.display       = hasOrders ? 'grid' : 'none';
+    $btnClear.disabled        = !hasOrders;
+    $badge.classList.toggle('visible', hasOrders);
+    $badgeText.textContent    = `${orders.length} ${t.readyLabel}`;
+
+    // Sync DOM cards with orders array
+    const existingCards = new Map(
+      [...$grid.querySelectorAll('.order-card')].map(el => [+el.dataset.id, el])
+    );
+
+    // Remove cards no longer in orders
+    existingCards.forEach((el, id) => {
+      if (!orders.find(o => o.id === id)) el.remove();
+    });
+
+    // Add new cards at the front
+    orders.forEach((order, index) => {
+      let card = existingCards.get(order.id);
+      if (!card) {
+        card = document.createElement('div');
+        card.className = 'order-card' + (order.isNew ? ' is-new' : '');
+        card.dataset.id = order.id;
+
+        if (order.isNew) {
+          const dot = document.createElement('span');
+          dot.className = 'new-dot';
+          dot.id = 'dot-' + order.id;
+          card.appendChild(dot);
+        }
+
+        const num = document.createElement('span');
+        num.className = 'order-number';
+        num.textContent = order.number;
+        card.appendChild(num);
+
+        $grid.prepend(card);
+      } else {
+        // Sync new state
+        card.classList.toggle('is-new', order.isNew);
+        const existingDot = document.getElementById('dot-' + order.id);
+        if (!order.isNew && existingDot) existingDot.remove();
+      }
+    });
+  }
+
+  /* ============================================================
+     ACTIONS
+  ============================================================ */
+  function addOrder() {
+    const t = LANGS[lang];
+    const raw = $input.value.trim();
+    const num = parseInt(raw, 10);
+
+    if (!raw || isNaN(num) || num < 1 || num > 9999) {
+      showError(t.errInvalid);
+      return;
+    }
+    if (orders.find(o => o.number === num)) {
+      showError(t.errDuplicate);
+      return;
+    }
+
+    clearError();
+    playBell();
+
+    const id = nextId++;
+    orders.unshift({ id, number: num, isNew: true });
+    $input.value = '';
+    $input.focus();
+    renderGrid();
+
+    // Remove new state after 6 s
+    setTimeout(() => {
+      const order = orders.find(o => o.id === id);
+      if (order) {
+        order.isNew = false;
+        renderGrid();
+      }
+    }, 6000);
+  }
+
+  function clearAll() {
+    orders = [];
+    renderGrid();
+    clearError();
+  }
+
+  function toggleLang() {
+    lang = lang === 'en' ? 'ar' : 'en';
+    applyLang();
+    renderGrid();
+  }
+
+  function showError(msg) {
+    $errorMsg.textContent = '⚠ ' + msg;
+    $input.focus();
+  }
+  function clearError() {
+    $errorMsg.textContent = '';
+  }
+
+  /* ============================================================
+     EVENT LISTENERS
+  ============================================================ */
+  $btnNotify.addEventListener('click', addOrder);
+  $btnClear.addEventListener('click', clearAll);
+  $btnLang.addEventListener('click', toggleLang);
+  $input.addEventListener('keydown', e => { if (e.key === 'Enter') addOrder(); });
+  $input.addEventListener('input', clearError);
+
+  /* ============================================================
+     INIT
+  ============================================================ */
+  applyLang();
+  renderGrid();
+</script>
+</body>
+</html>

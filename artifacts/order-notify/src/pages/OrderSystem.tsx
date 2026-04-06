@@ -5,7 +5,7 @@ const LOGO_URL = ""; // Replace with your cafe logo URL, e.g. "https://example.c
 function LogoImage() {
   const [failed, setFailed] = useState(false);
   if (!LOGO_URL || failed) {
-    return <span style={{ fontSize: "1.6rem" }}>☕</span>;
+    return <span className="text-2xl leading-none">☕</span>;
   }
   return (
     <img
@@ -22,73 +22,66 @@ type Language = "en" | "ar";
 interface Order {
   id: number;
   number: number;
-  timestamp: number;
   isNew: boolean;
 }
 
-const translations = {
+const T = {
   en: {
     dir: "ltr" as const,
     appTitle: "Order Ready",
     appSubtitle: "Your order is ready for pickup",
-    controlPanelTitle: "Staff Control Panel",
-    orderNumberLabel: "Ready Order Number",
-    orderNumberPlaceholder: "Enter order #",
-    notifyButton: "Notify / Add Order",
-    clearAllButton: "Clear All",
+    placeholder: "Order #",
+    notify: "Notify",
+    clearAll: "Clear All",
     noOrdersTitle: "No orders ready yet",
-    noOrdersSubtitle: "Use the control panel to notify customers",
-    readyOrders: "Ready for Pickup",
-    lang: "AR",
-    orderInputError: "Please enter a valid order number",
-    orderExists: "Order already displayed",
+    noOrdersSubtitle: "Enter an order number below to notify customers",
+    readyLabel: "Ready for Pickup",
+    langToggle: "AR",
+    errorInvalid: "Enter a valid number (1–9999)",
+    errorDuplicate: "Already on screen",
   },
   ar: {
     dir: "rtl" as const,
     appTitle: "الطلب جاهز",
     appSubtitle: "طلبك جاهز للاستلام",
-    controlPanelTitle: "لوحة تحكم الموظفين",
-    orderNumberLabel: "رقم الطلب الجاهز",
-    orderNumberPlaceholder: "أدخل رقم الطلب",
-    notifyButton: "إشعار / إضافة طلب",
-    clearAllButton: "مسح الكل",
+    placeholder: "رقم الطلب",
+    notify: "إشعار",
+    clearAll: "مسح الكل",
     noOrdersTitle: "لا توجد طلبات جاهزة",
-    noOrdersSubtitle: "استخدم لوحة التحكم لإعلام العملاء",
-    readyOrders: "جاهز للاستلام",
-    lang: "EN",
-    orderInputError: "يرجى إدخال رقم طلب صالح",
-    orderExists: "الطلب معروض بالفعل",
+    noOrdersSubtitle: "أدخل رقم الطلب أدناه لإعلام العملاء",
+    readyLabel: "جاهز للاستلام",
+    langToggle: "EN",
+    errorInvalid: "أدخل رقمًا صحيحًا (١–٩٩٩٩)",
+    errorDuplicate: "الطلب معروض بالفعل",
   },
 };
 
-function playBellSound() {
+function playBell() {
   try {
-    const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    const frequencies = [523.25, 659.25, 783.99, 1046.5];
-    const timings = [0, 0.15, 0.3, 0.45];
-
-    frequencies.forEach((freq, i) => {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    [
+      [523.25, 0],
+      [659.25, 0.15],
+      [783.99, 0.3],
+      [1046.5, 0.45],
+    ].forEach(([freq, delay]) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + timings[i]);
-      gain.gain.setValueAtTime(0, ctx.currentTime + timings[i]);
-      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + timings[i] + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + timings[i] + 0.8);
-
-      osc.start(ctx.currentTime + timings[i]);
-      osc.stop(ctx.currentTime + timings[i] + 0.8);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.8);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.8);
     });
-
     setTimeout(() => ctx.close(), 3000);
   } catch {
-    // Audio not available
+    /* no-op */
   }
 }
 
@@ -99,188 +92,145 @@ export default function OrderSystem() {
   const [errorMsg, setErrorMsg] = useState("");
   const [nextId, setNextId] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
-  const t = translations[lang];
+  const t = T[lang];
 
   useEffect(() => {
     document.documentElement.dir = t.dir;
     document.documentElement.lang = lang;
   }, [lang, t.dir]);
 
-  const handleAddOrder = useCallback(() => {
+  const addOrder = useCallback(() => {
     const num = parseInt(inputValue.trim(), 10);
-    if (!inputValue.trim() || isNaN(num) || num <= 0 || num > 9999) {
-      setErrorMsg(t.orderInputError);
+    if (!inputValue.trim() || isNaN(num) || num < 1 || num > 9999) {
+      setErrorMsg(t.errorInvalid);
       inputRef.current?.focus();
       return;
     }
     if (orders.some((o) => o.number === num)) {
-      setErrorMsg(t.orderExists);
+      setErrorMsg(t.errorDuplicate);
       inputRef.current?.focus();
       return;
     }
-
     setErrorMsg("");
-    playBellSound();
-
-    const newOrder: Order = {
-      id: nextId,
-      number: num,
-      timestamp: Date.now(),
-      isNew: true,
-    };
-    setOrders((prev) => [newOrder, ...prev]);
+    playBell();
+    const id = nextId;
+    setOrders((prev) => [{ id, number: num, isNew: true }, ...prev]);
     setNextId((n) => n + 1);
     setInputValue("");
     inputRef.current?.focus();
-
     setTimeout(() => {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === newOrder.id ? { ...o, isNew: false } : o))
-      );
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, isNew: false } : o)));
     }, 6000);
   }, [inputValue, orders, nextId, t]);
 
-  const handleClearAll = useCallback(() => {
+  const clearAll = useCallback(() => {
     setOrders([]);
     setErrorMsg("");
   }, []);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") handleAddOrder();
-    },
-    [handleAddOrder]
-  );
-
-  const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
-
   return (
-    <div className="min-h-screen flex flex-col" style={{ direction: t.dir }}>
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          {/* Logo placeholder */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/30">
-              {/* Replace LOGO_URL below with your cafe logo image URL */}
-              <LogoImage />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold leading-tight tracking-tight">
-                {t.appTitle}
-              </h1>
-              <p className="text-sm text-primary-foreground/80">{t.appSubtitle}</p>
-            </div>
-          </div>
-
-          {/* Language Toggle */}
-          <button
-            onClick={toggleLang}
-            className="px-4 py-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors font-bold text-sm border border-white/30 cursor-pointer"
-          >
-            {t.lang}
-          </button>
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{ direction: t.dir }}
+    >
+      {/* ── SLIM HEADER ── */}
+      <header className="flex-shrink-0 bg-primary text-primary-foreground flex items-center gap-3 px-4 sm:px-6 py-2.5 shadow-md">
+        <div className="w-9 h-9 rounded-lg bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <LogoImage />
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-base sm:text-lg leading-tight tracking-tight truncate">
+            {t.appTitle}
+          </p>
+          <p className="text-xs text-primary-foreground/70 leading-tight truncate hidden sm:block">
+            {t.appSubtitle}
+          </p>
+        </div>
+        {orders.length > 0 && (
+          <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary-foreground/80 bg-white/15 rounded-full px-3 py-1 border border-white/20 flex-shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse inline-block" />
+            {orders.length} {t.readyLabel}
+          </span>
+        )}
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
-        {/* ===== STAFF CONTROL PANEL ===== */}
-        <aside className="lg:w-80 xl:w-96 flex-shrink-0">
-          <div className="bg-card rounded-2xl shadow-sm border border-border p-6 sticky top-6">
-            <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-              {t.controlPanelTitle}
+      {/* ── MAIN DISPLAY AREA ── */}
+      <main className="flex-1 overflow-y-auto bg-background">
+        {orders.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-4 text-center px-6">
+            <div className="text-7xl sm:text-8xl opacity-30 select-none">🔔</div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-muted-foreground">
+              {t.noOrdersTitle}
             </h2>
+            <p className="text-muted-foreground/70 text-base sm:text-lg max-w-sm">
+              {t.noOrdersSubtitle}
+            </p>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            {orders.map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))}
+          </div>
+        )}
+      </main>
 
-            {/* Order Number Input */}
-            <div className="mb-4">
-              <label
-                htmlFor="order-input"
-                className="block text-sm font-semibold text-muted-foreground mb-2"
-              >
-                {t.orderNumberLabel}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  id="order-input"
-                  type="number"
-                  min="1"
-                  max="9999"
-                  value={inputValue}
-                  onChange={(e) => {
-                    setInputValue(e.target.value);
-                    setErrorMsg("");
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder={t.orderNumberPlaceholder}
-                  className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                  style={{ appearance: "textfield" }}
-                />
-              </div>
-              {errorMsg && (
-                <p className="mt-2 text-sm text-destructive font-medium">{errorMsg}</p>
-              )}
-            </div>
-
-            {/* Notify Button */}
-            <button
-              onClick={handleAddOrder}
-              className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.98] text-primary-foreground font-bold text-base transition-all shadow-md hover:shadow-lg cursor-pointer mb-3"
-            >
-              {t.notifyButton}
-            </button>
-
-            {/* Clear All Button */}
-            <button
-              onClick={handleClearAll}
-              disabled={orders.length === 0}
-              className="w-full py-3 rounded-xl border-2 border-destructive text-destructive hover:bg-destructive/10 disabled:opacity-30 disabled:cursor-not-allowed font-semibold text-sm transition-all cursor-pointer"
-            >
-              {t.clearAllButton}
-            </button>
-
-            {/* Order count badge */}
-            {orders.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-border">
-                <p className="text-center text-sm text-muted-foreground">
-                  <span className="font-bold text-primary text-lg">{orders.length}</span>{" "}
-                  {t.readyOrders}
-                </p>
-              </div>
+      {/* ── COMPACT BOTTOM BAR (Staff Control) ── */}
+      <footer className="flex-shrink-0 bg-card border-t border-border shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 sm:px-5 py-2.5">
+        <div className="flex items-center gap-2 max-w-4xl mx-auto">
+          {/* Number Input */}
+          <div className="relative flex-1 min-w-0">
+            <input
+              ref={inputRef}
+              type="number"
+              min="1"
+              max="9999"
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setErrorMsg("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && addOrder()}
+              placeholder={t.placeholder}
+              className="w-full rounded-xl border-2 border-input bg-background px-3 py-2 text-xl font-black text-center focus:outline-none focus:border-primary transition-colors"
+              style={{ appearance: "textfield", MozAppearance: "textfield" } as React.CSSProperties}
+            />
+            {errorMsg && (
+              <p className="absolute -top-6 start-0 text-xs text-destructive font-semibold whitespace-nowrap">
+                ⚠ {errorMsg}
+              </p>
             )}
           </div>
-        </aside>
 
-        {/* ===== CUSTOMER DISPLAY AREA ===== */}
-        <section className="flex-1 min-w-0">
-          {orders.length === 0 ? (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/30">
-              <div className="text-6xl mb-4">🔔</div>
-              <h3 className="text-2xl font-bold text-muted-foreground">{t.noOrdersTitle}</h3>
-              <p className="text-muted-foreground mt-2 text-center px-4">{t.noOrdersSubtitle}</p>
-            </div>
-          ) : (
-            <div>
-              {/* Section label */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex-1 h-px bg-border"></div>
-                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
-                  {t.readyOrders}
-                </span>
-                <div className="flex-1 h-px bg-border"></div>
-              </div>
+          {/* Notify button */}
+          <button
+            onClick={addOrder}
+            className="flex-shrink-0 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground font-bold text-sm px-4 py-2.5 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+          >
+            {t.notify}
+          </button>
 
-              {/* Order grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-                {orders.map((order) => (
-                  <OrderCard key={order.id} order={order} />
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      </main>
+          {/* Clear All button */}
+          <button
+            onClick={clearAll}
+            disabled={orders.length === 0}
+            className="flex-shrink-0 rounded-xl border-2 border-destructive/60 text-destructive hover:bg-destructive/10 disabled:opacity-25 disabled:cursor-not-allowed font-semibold text-sm px-3 py-2.5 transition-all cursor-pointer whitespace-nowrap"
+          >
+            {t.clearAll}
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-7 bg-border flex-shrink-0" />
+
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang((l) => (l === "en" ? "ar" : "en"))}
+            className="flex-shrink-0 rounded-xl bg-muted hover:bg-accent text-foreground font-black text-sm px-3 py-2.5 transition-all cursor-pointer border border-border"
+          >
+            {t.langToggle}
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -289,25 +239,28 @@ function OrderCard({ order }: { order: Order }) {
   return (
     <div
       className={`
-        relative flex items-center justify-center
-        rounded-2xl border-4 border-primary
-        bg-gradient-to-br from-card to-primary/5
-        shadow-lg
-        aspect-square
-        cursor-default select-none
+        relative flex items-center justify-center aspect-square
+        rounded-2xl border-4 select-none cursor-default
         transition-all duration-300
-        ${order.isNew ? "order-card-new" : "order-card"}
+        ${
+          order.isNew
+            ? "border-primary bg-primary/8 order-card-new shadow-xl"
+            : "border-primary/40 bg-card order-card shadow-md"
+        }
       `}
     >
-      {/* Pulsing dot for new orders */}
       {order.isNew && (
         <span className="absolute top-2 end-2 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
         </span>
       )}
-
-      <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-primary leading-none tabular-nums">
+      <span
+        className={`font-black leading-none tabular-nums transition-colors ${
+          order.isNew ? "text-primary" : "text-foreground/80"
+        }`}
+        style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+      >
         {order.number}
       </span>
     </div>
