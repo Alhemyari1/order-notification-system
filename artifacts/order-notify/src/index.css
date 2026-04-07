@@ -88,6 +88,39 @@
   }
 }
 
+/* ====== WATERMARK BACKGROUND LOGO ======
+   Replace the URL below with your cafe logo image link.
+   Adjust --watermark-opacity (0.05–0.12 recommended) to taste.
+   --watermark-size controls how large the logo appears on screen.
+====================================== */
+:root {
+  --watermark-logo-url: url(""); /* ← paste your logo URL here, e.g. url("https://example.com/logo.png") */
+  --watermark-opacity: 0.07;
+  --watermark-size: 55%;
+}
+
+.display-watermark {
+  position: relative;
+}
+
+.display-watermark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--watermark-logo-url);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: var(--watermark-size);
+  opacity: var(--watermark-opacity);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.display-watermark > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* ====== ORDER NUMBER CARD ANIMATIONS ====== */
 @keyframes slideInUp {
   from {
