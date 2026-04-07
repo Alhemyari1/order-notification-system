@@ -166,13 +166,31 @@
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-      position: relative;
     }
 
-    #display::before {
+    /*
+     * Sticky-sentinel: zero-height sticky div stays pinned to the top
+     * of the scrollable viewport. Its ::after stretches 100dvh down
+     * from that point, so the watermark is always perfectly centered
+     * in the visible area — whether there are 0 or 100 orders shown.
+     */
+    .watermark-sentinel {
+      position: sticky;
+      top: 0;
+      height: 0;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .watermark-sentinel::after {
       content: "";
+      display: block;
       position: absolute;
-      inset: 0;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100dvh;
       background-image: var(--watermark-logo-url);
       background-repeat: no-repeat;
       background-position: center center;
@@ -180,11 +198,6 @@
       opacity: var(--watermark-opacity);
       pointer-events: none;
       z-index: 0;
-    }
-
-    #display > * {
-      position: relative;
-      z-index: 1;
     }
 
     /* Empty state */
@@ -393,6 +406,7 @@
 
   <!-- ── DISPLAY AREA ── -->
   <main id="display">
+    <div class="watermark-sentinel" aria-hidden="true"></div>
     <div id="empty-state">
       <div id="empty-icon">🔔</div>
       <div id="empty-title">No orders ready yet</div>

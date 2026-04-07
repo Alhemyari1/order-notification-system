@@ -159,7 +159,9 @@ export default function OrderSystem() {
       </header>
 
       {/* ── MAIN DISPLAY AREA ── */}
-      <main className="flex-1 overflow-y-auto bg-background display-watermark">
+      <main className="flex-1 overflow-y-auto bg-background relative">
+        {/* Watermark: sticky-sentinel keeps it centered in the viewport at all times */}
+        <div className="watermark-sentinel" aria-hidden="true" />
         {orders.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-4 text-center px-6">
             <div className="text-7xl sm:text-8xl opacity-30 select-none">🔔</div>
