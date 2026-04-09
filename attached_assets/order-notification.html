@@ -164,8 +164,8 @@
 
     #display {
       flex: 1;
-      overflow-y: auto;
-      padding: 20px;
+      overflow: hidden; /* no scrollbars — JS keeps everything on screen */
+      padding: 0;
     }
 
     /*
@@ -200,8 +200,9 @@
       z-index: 0;
     }
 
-    /* Empty state */
+    /* Empty state — fills full display height */
     #empty-state {
+      width: 100%;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -214,18 +215,19 @@
     #empty-title { font-size: 1.6rem; font-weight: 800; color: var(--muted); }
     #empty-sub { font-size: 1rem; color: var(--muted); opacity: 0.7; max-width: 300px; }
 
-    /* Order grid */
+    /* Order grid — columns/sizes controlled entirely by JS scaling engine */
     #order-grid {
+      width: 100%;
+      height: 100%;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 18px;
+      justify-content: center;
+      align-content: center;
+      padding: 20px;
+      box-sizing: border-box;
     }
-    @media (min-width: 640px)  { #order-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
-    @media (min-width: 1024px) { #order-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }
-    @media (min-width: 1440px) { #order-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); } }
 
     .order-card {
-      aspect-ratio: 1;
+      /* width & height set by JS; aspect-ratio removed */
       border-radius: var(--radius);
       border: 4px solid rgba(var(--brand-h), 30%, 80%, 0.35);
       border-color: color-mix(in hsl, var(--primary) 40%, transparent);
@@ -249,7 +251,7 @@
                  glowPulse 1.8s ease-in-out 0.4s 3;
     }
     .order-number {
-      font-size: clamp(2.5rem, 6vw, 6rem);
+      /* font-size set dynamically by JS scaling engine */
       font-weight: 900;
       line-height: 1;
       color: var(--text);
@@ -566,7 +568,7 @@
     });
 
     // Add new cards at the front
-    orders.forEach((order, index) => {
+    orders.forEach((order) => {
       let card = existingCards.get(order.id);
       if (!card) {
         card = document.createElement('div');
@@ -595,7 +597,54 @@
         if (!order.isNew && existingDot) existingDot.remove();
       }
     });
+
+    // Apply dynamic scaling after DOM is updated
+    computeGridScale();
   }
+
+  /* ============================================================
+     DYNAMIC SCALING ENGINE
+     Computes the largest square card size that fits ALL orders
+     on screen without any scrolling, then applies sizes via JS.
+  ============================================================ */
+  function computeGridScale() {
+    if (orders.length === 0) return;
+
+    const display = document.getElementById('display');
+    const PAD = 20;
+    const G   = 14; // gap between cards
+    const W   = Math.max(1, display.clientWidth  - PAD * 2);
+    const H   = Math.max(1, display.clientHeight - PAD * 2);
+    const N   = orders.length;
+
+    // Find the column count that maximises individual card size
+    let best = 0, bestCols = 1;
+    for (let c = 1; c <= N; c++) {
+      const r  = Math.ceil(N / c);
+      const cw = (W - (c - 1) * G) / c;
+      const ch = (H - (r - 1) * G) / r;
+      const s  = Math.min(cw, ch);
+      if (s > best) { best = s; bestCols = c; }
+    }
+
+    const cardSize = Math.max(55, Math.min(best, 260));
+    const fontSize = Math.round(cardSize * 0.38);
+
+    // Apply grid columns and gap
+    $grid.style.gridTemplateColumns = `repeat(${bestCols}, ${cardSize}px)`;
+    $grid.style.gap                 = `${G}px`;
+
+    // Apply width, height, and font-size to every card
+    $grid.querySelectorAll('.order-card').forEach(card => {
+      card.style.width  = cardSize + 'px';
+      card.style.height = cardSize + 'px';
+      const numEl = card.querySelector('.order-number');
+      if (numEl) numEl.style.fontSize = fontSize + 'px';
+    });
+  }
+
+  // Re-scale whenever the window is resized
+  window.addEventListener('resize', computeGridScale);
 
   /* ============================================================
      ACTIONS

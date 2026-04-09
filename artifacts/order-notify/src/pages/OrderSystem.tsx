@@ -85,17 +85,87 @@ function playBell() {
   }
 }
 
-export default function OrderSystem() {
-  const [lang, setLang] = useState<Language>("en");
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [nextId, setNextId] = useState(1);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const t = T[lang];
+/* ─────────────────────────────────────────────────────────────
+   Dynamic scaling hook
+   Watches the container dimensions + order count and computes
+   the largest square card size that fits every order on screen
+   without any scrolling — no matter how many orders exist.
+───────────────────────────────────────────────────────────── */
+interface GridLayout {
+  cols: number;
+  cardSize: number;
+  fontSize: number;
+  gap: number;
+}
+
+function useScaledGrid(
+  containerRef: React.RefObject<HTMLElement | null>,
+  count: number
+): GridLayout {
+  const [layout, setLayout] = useState<GridLayout>({
+    cols: 4,
+    cardSize: 160,
+    fontSize: 60,
+    gap: 14,
+  });
+
+  const compute = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (count === 0) {
+      setLayout({ cols: 4, cardSize: 160, fontSize: 60, gap: 14 });
+      return;
+    }
+
+    const PAD = 20;  // inner padding on each side
+    const G   = 14;  // gap between cards
+    const W   = Math.max(1, el.clientWidth  - PAD * 2);
+    const H   = Math.max(1, el.clientHeight - PAD * 2);
+
+    // Find the column count that maximises card size
+    let best = 0;
+    let bestCols = 1;
+    for (let c = 1; c <= count; c++) {
+      const r   = Math.ceil(count / c);
+      const cw  = (W - (c - 1) * G) / c;
+      const ch  = (H - (r - 1) * G) / r;
+      const s   = Math.min(cw, ch);
+      if (s > best) { best = s; bestCols = c; }
+    }
+
+    const cardSize = Math.max(55, Math.min(best, 260));
+    const fontSize = Math.round(cardSize * 0.38);
+    setLayout({ cols: bestCols, cardSize, fontSize, gap: G });
+  }, [containerRef, count]);
 
   useEffect(() => {
-    document.documentElement.dir = t.dir;
+    compute();
+    const ro = new ResizeObserver(compute);
+    const el = containerRef.current;
+    if (el) ro.observe(el);
+    return () => ro.disconnect();
+  }, [compute, containerRef]);
+
+  return layout;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Main component
+───────────────────────────────────────────────────────────── */
+export default function OrderSystem() {
+  const [lang, setLang]         = useState<Language>("en");
+  const [orders, setOrders]     = useState<Order[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [nextId, setNextId]     = useState(1);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  const mainRef   = useRef<HTMLElement | null>(null);
+  const layout    = useScaledGrid(mainRef, orders.length);
+  const t         = T[lang];
+
+  useEffect(() => {
+    document.documentElement.dir  = t.dir;
     document.documentElement.lang = lang;
   }, [lang, t.dir]);
 
@@ -159,10 +229,16 @@ export default function OrderSystem() {
       </header>
 
       {/* ── MAIN DISPLAY AREA ── */}
-      <main className="flex-1 overflow-y-auto bg-background relative">
-        {/* Watermark: sticky-sentinel keeps it centered in the viewport at all times */}
+      {/* overflow-hidden: no scrollbars ever; layout JS ensures everything fits */}
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-hidden bg-background relative"
+      >
+        {/* Watermark — always centered via sticky-sentinel */}
         <div className="watermark-sentinel" aria-hidden="true" />
+
         {orders.length === 0 ? (
+          /* Empty state */
           <div className="h-full flex flex-col items-center justify-center gap-4 text-center px-6">
             <div className="text-7xl sm:text-8xl opacity-30 select-none">🔔</div>
             <h2 className="text-2xl sm:text-3xl font-bold text-muted-foreground">
@@ -173,9 +249,28 @@ export default function OrderSystem() {
             </p>
           </div>
         ) : (
-          <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+          /* Dynamic grid — fills 100% of main, no overflow */
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "grid",
+              gridTemplateColumns: `repeat(${layout.cols}, ${layout.cardSize}px)`,
+              gap: `${layout.gap}px`,
+              justifyContent: "center",
+              alignContent: "center",
+              padding: "20px",
+              boxSizing: "border-box",
+            }}
+          >
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} onDismiss={dismissOrder} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onDismiss={dismissOrder}
+                cardSize={layout.cardSize}
+                fontSize={layout.fontSize}
+              />
             ))}
           </div>
         )}
@@ -241,13 +336,27 @@ export default function OrderSystem() {
   );
 }
 
-function OrderCard({ order, onDismiss }: { order: Order; onDismiss: (id: number) => void }) {
+/* ─────────────────────────────────────────────────────────────
+   Order card — size is driven entirely by the layout engine
+───────────────────────────────────────────────────────────── */
+function OrderCard({
+  order,
+  onDismiss,
+  cardSize,
+  fontSize,
+}: {
+  order: Order;
+  onDismiss: (id: number) => void;
+  cardSize: number;
+  fontSize: number;
+}) {
   return (
     <div
       onClick={() => onDismiss(order.id)}
       title="Tap to dismiss"
+      style={{ width: cardSize, height: cardSize }}
       className={`
-        relative flex items-center justify-center aspect-square
+        relative flex items-center justify-center
         rounded-2xl border-4 select-none cursor-pointer
         transition-all duration-200
         hover:scale-95 hover:opacity-80 active:scale-90
@@ -268,7 +377,7 @@ function OrderCard({ order, onDismiss }: { order: Order; onDismiss: (id: number)
         className={`font-black leading-none tabular-nums transition-colors ${
           order.isNew ? "text-primary" : "text-foreground/80"
         }`}
-        style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+        style={{ fontSize }}
       >
         {order.number}
       </span>
